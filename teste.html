@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consulta de CEP</title>
+</head>
+
+<body>
+
+    <form>
+        <label for="cep">CEP:</label>
+        <input type="text" id="cep" name="cep">
+        <button type="button" onclick="pesquisarCEP()">Pesquisar</button>
+    </form>
+
+    <hr>
+
+    <h2>Informações do Endereço</h2>
+    <form>
+        <label for="txtrua">Rua:</label>
+        <input type="text" id="txtrua" name="txtrua" disabled>
+
+        <label for="txtbairro">Bairro:</label>
+        <input type="text" id="txtbairro" name="txtbairro" disabled>
+
+        <label for="txtcidade">Cidade:</label>
+        <input type="text" id="txtcidade" name="txtcidade" disabled>
+
+        <label for="txtestado">Estado:</label>
+        <input type="text" id="txtestado" name="txtestado" disabled>
+    </form>
+
+    <hr>
+
+    <h2>Consulta de Endereços Salvos</h2>
+    <table id="consultaTable" border="1">
+        <tr>
+            <th>Rua</th>
+            <th>Bairro</th>
+            <th>Cidade</th>
+            <th>Estado</th>
+            <th>Ação</th>
+        </tr>
+    </table>
+
+    <script>
+        function limpa_formulário_cep() {
+            document.getElementById('txtrua').value = "";
+            document.getElementById('txtbairro').value = "";
+            document.getElementById('txtcidade').value = "";
+            document.getElementById('txtestado').value = "";
+        }
+
+        function meu_callback(conteudo) {
+            if (!("erro" in conteudo)) {
+                document.getElementById('txtrua').value = conteudo.logradouro;
+                document.getElementById('txtbairro').value = conteudo.bairro;
+                document.getElementById('txtcidade').value = conteudo.localidade;
+                document.getElementById('txtestado').value = conteudo.uf;
+
+                // Salvar informações no localStorage
+                salvarInformacoesNoLocalStorage(conteudo);
+
+                // Atualizar a tabela de consulta
+                atualizarTabelaConsulta();
+            } else {
+                limpa_formulário_cep();
+                alert("CEP não encontrado.");
+            }
+        }
+
+        function salvarInformacoesNoLocalStorage(conteudo) {
+            if (typeof (Storage) !== "undefined") {
+                var enderecoSalvo = {
+                    rua: conteudo.logradouro,
+                    bairro: conteudo.bairro,
+                    cidade: conteudo.localidade,
+                    estado: conteudo.uf
+                };
+
+                // Verificar se já existe um array no localStorage
+                var enderecosSalvos = JSON.parse(localStorage.getItem('enderecosSalvos')) || [];
+
+                // Adicionar o endereço atual ao array
+                enderecosSalvos.push(enderecoSalvo);
+
+                // Salvar o array de endereços no localStorage
+                localStorage.setItem('enderecosSalvos', JSON.stringify(enderecosSalvos));
+            }
+        }
+
+        function criarBotaoExcluir(index) {
+            var button = document.createElement('button');
+            button.textContent = 'Excluir';
+            button.addEventListener('click', function () {
+                excluirEndereco(index);
+            });
+            return button;
+        }
+
+        function excluirEndereco(index) {
+            if (typeof (Storage) !== "undefined") {
+                var enderecosSalvos = JSON.parse(localStorage.getItem('enderecosSalvos')) || [];
+
+                // Remover o endereço pelo índice
+                enderecosSalvos.splice(index, 1);
+
+                // Salvar o array de endereços atualizado no localStorage
+                localStorage.setItem('enderecosSalvos', JSON.stringify(enderecosSalvos));
+
+                // Atualizar a tabela de consulta
+                atualizarTabelaConsulta();
+            }
+        }
+
+        function atualizarTabelaConsulta() {
+            var table = document.getElementById('consultaTable');
+            var enderecosSalvos = JSON.parse(localStorage.getItem('enderecosSalvos')) || [];
+
+            // Limpar a tabela
+            table.innerHTML = "<tr><th>Rua</th><th>Bairro</th><th>Cidade</th><th>Estado</th><th>Ação</th></tr>";
+
+            // Adicionar linhas à tabela com os dados salvos
+            for (var i = 0; i < enderecosSalvos.length; i++) {
+                var row = table.insertRow(-1);
+                var cell1 = row.insertCell(0);
+                var cell2 = row.insertCell(1);
+                var cell3 = row.insertCell(2);
+                var cell4 = row.insertCell(3);
+                var cell5 = row.insertCell(4);
+
+                cell1.innerHTML = enderecosSalvos[i].rua;
+                cell2.innerHTML = enderecosSalvos[i].bairro;
+                cell3.innerHTML = enderecosSalvos[i].cidade;
+                cell4.innerHTML = enderecosSalvos[i].estado;
+
+                // Adicionar botão Excluir
+                var botaoExcluir = criarBotaoExcluir(i);
+                cell5.appendChild(botaoExcluir);
+            }
+        }
+
+        function pesquisarCEP() {
+            var cep = document.getElementById('cep').value.replace(/\D/g, '');
+
+            if (cep !== "") {
+                var validacep = /^[0-9]{8}$/;
+
+                if (validacep.test(cep)) {
+                    document.getElementById('txtrua').value = "...";
+                    document.getElementById('txtbairro').value = "...";
+                    document.getElementById('txtcidade').value = "...";
+                    document.getElementById('txtestado').value = "...";
+
+                    var script = document.createElement('script');
+                    script.src = 'https://viacep.com.br/ws/' + cep + '/json/?callback=meu_callback';
+                    document.body.appendChild(script);
+                } else {
+                    limpa_formulário_cep();
+                    alert("Formato de CEP inválido.");
+                }
+            } else {
+                limpa_formulário_cep();
+            }
+        }
+
+        // Carregar informações da tabela de consulta na inicialização
+        window.onload = atualizarTabelaConsulta;
+    </script>
+
+</body>
+
+</html>
